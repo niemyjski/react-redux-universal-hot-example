@@ -44,6 +44,20 @@ module.exports = {
       { test: webpackIsomorphicToolsPlugin.regular_expression('images'), loader: 'url-loader?limit=10240' }
     ]
   },
+  // don't polyfill or mock node requires (causes exceptionless universial to fail on browser)
+  // http://webpack.github.io/docs/configuration.html#node
+  node: {
+    child_process: false,
+    fs: false,
+    http: false,
+    https: false,
+    os: false,
+    path: false,
+    process: false,
+    clearImmediate: false,
+    setImmediate: false,
+    url: false
+  },
   progress: true,
   resolve: {
     modulesDirectories: [

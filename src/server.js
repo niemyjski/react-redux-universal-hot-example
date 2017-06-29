@@ -19,6 +19,13 @@ import createHistory from 'react-router/lib/createMemoryHistory';
 import {Provider} from 'react-redux';
 import getRoutes from './routes';
 
+import { ExceptionlessClient } from 'exceptionless';
+const exceptionlessClient = ExceptionlessClient.default;
+exceptionlessClient.config.apiKey = 'YOUR_API_KEY_HERE';
+exceptionlessClient.config.useDebugLogger(); // Testing only
+exceptionlessClient.config.useLocalStorage();
+exceptionlessClient.config.defaultTags.push('Universal', 'Server');
+
 const targetUrl = 'http://' + config.apiHost + ':' + config.apiPort;
 const pretty = new PrettyError();
 const app = new Express();
@@ -35,19 +42,24 @@ app.use(Express.static(path.join(__dirname, '..', 'static')));
 
 // Proxy to API server
 app.use('/api', (req, res) => {
+  exceptionlessClient.createFeatureUsage('/api').addRequestInfo(req).submit();
   proxy.web(req, res, {target: targetUrl});
 });
 
 app.use('/ws', (req, res) => {
+  exceptionlessClient.createFeatureUsage('/ws').addRequestInfo(req).submit();
   proxy.web(req, res, {target: targetUrl + '/ws'});
 });
 
 server.on('upgrade', (req, socket, head) => {
+  exceptionlessClient.createFeatureUsage('upgrade').addRequestInfo(req).submit();
   proxy.ws(req, socket, head);
 });
 
 // added the error handling to avoid https://github.com/nodejitsu/node-http-proxy/issues/527
 proxy.on('error', (error, req, res) => {
+  exceptionlessClient.createUnhandledException(error, 'proxy').addRequestInfo(req).submit();
+
   let json;
   if (error.code !== 'ECONNRESET') {
     console.error('proxy error', error);
@@ -82,6 +94,8 @@ app.use((req, res) => {
   }
 
   match({ history, routes: getRoutes(store), location: req.originalUrl }, (error, redirectLocation, renderProps) => {
+    exceptionlessClient.createUnhandledException(error, 'router').addRequestInfo(req).submit();
+
     if (redirectLocation) {
       res.redirect(redirectLocation.pathname + redirectLocation.search);
     } else if (error) {

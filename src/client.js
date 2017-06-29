@@ -15,6 +15,13 @@ import useScroll from 'scroll-behavior/lib/useStandardScroll';
 
 import getRoutes from './routes';
 
+import { ExceptionlessClient } from 'exceptionless';
+const exceptionlessClient = ExceptionlessClient.default;
+exceptionlessClient.config.apiKey = 'YOUR_API_KEY_HERE';
+exceptionlessClient.config.useDebugLogger(); // Testing only
+exceptionlessClient.config.useLocalStorage();
+exceptionlessClient.config.defaultTags.push('Universal', 'Client');
+
 const client = new ApiClient();
 const _browserHistory = useScroll(() => browserHistory)();
 const dest = document.getElementById('content');
@@ -34,6 +41,7 @@ function initSocket() {
   return socket;
 }
 
+exceptionlessClient.submitFeatureUsage(location.pathname || '/');
 global.socket = initSocket();
 
 const component = (
@@ -55,6 +63,7 @@ if (process.env.NODE_ENV !== 'production') {
   window.React = React; // enable debugger
 
   if (!dest || !dest.firstChild || !dest.firstChild.attributes || !dest.firstChild.attributes['data-react-checksum']) {
+    exceptionlessClient.submitLog('client', 'Server-side React render was discarded.', 'Error');
     console.error('Server-side React render was discarded. Make sure that your initial render does not contain any client-side code.');
   }
 }
